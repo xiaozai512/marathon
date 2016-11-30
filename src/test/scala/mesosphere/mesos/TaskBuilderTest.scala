@@ -1106,7 +1106,7 @@ class TaskBuilderTest extends MarathonSpec with Matchers {
     assert(envVariables.count(v => v.getName.startsWith("PORT_")) == 1)
   }
 
-  test("PortMappingsWithoutHostPort") {
+  test("Docker Container PortMappingsWithoutHostPort") {
     val offer = MarathonTestHelper.makeBasicOfferWithRole(
       cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
     )
@@ -1138,6 +1138,45 @@ class TaskBuilderTest extends MarathonSpec with Matchers {
     hostPort = taskInfo.getContainer.getDocker.getPortMappings(1).getHostPort
     assert(hostPort == 31005)
     containerPort = taskInfo.getContainer.getDocker.getPortMappings(1).getContainerPort
+    assert(containerPort == hostPort)
+  }
+
+  test("Mesos Container PortMappingsWithoutHostPort") {
+    val offer = MarathonTestHelper.makeBasicOfferWithRole(
+      cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
+    )
+      .addResources(RangesResource(Resource.PORTS, Seq(protos.Range(33000, 34000)), "marathon"))
+      .build
+
+    val task: Option[(MesosProtos.TaskInfo, _)] = buildIfMatches(offer, AppDefinition(
+      id = "/testApp".toPath,
+      resources = Resources(cpus = 1.0, mem = 64.0, disk = 1.0),
+      executor = "//cmd",
+      networks = Seq(ContainerNetwork("whatever")),
+      container = Some(Container.Mesos(
+        portMappings = Seq(
+          PortMapping(containerPort = 0, hostPort = Some(31000), servicePort = 9000, protocol = "tcp"),
+          PortMapping(containerPort = 0, hostPort = None, servicePort = 9001, protocol = "tcp"),
+          PortMapping(containerPort = 0, hostPort = Some(31005), servicePort = 9002, protocol = "tcp")
+        )
+      ))
+    ))
+    assert(task.isDefined, "expected task to match offer")
+    val (taskInfo: TaskInfo, _) = task.get
+    val ctProto = taskInfo.getContainer
+    assert(ctProto.getNetworkInfosCount == 1, "expected a single network info")
+
+    val ctNetworking = ctProto.getNetworkInfos(0)
+    assert(ctNetworking.getPortMappingsList.size == 2, "expected 2 port mappings (ignoring hostPort == None)")
+
+    var hostPort = ctNetworking.getPortMappings(0).getHostPort
+    assert(hostPort == 31000)
+    var containerPort = ctNetworking.getPortMappings(0).getContainerPort
+    assert(containerPort == hostPort)
+
+    hostPort = ctNetworking.getPortMappings(1).getHostPort
+    assert(hostPort == 31005)
+    containerPort = ctNetworking.getPortMappings(1).getContainerPort
     assert(containerPort == hostPort)
   }
 

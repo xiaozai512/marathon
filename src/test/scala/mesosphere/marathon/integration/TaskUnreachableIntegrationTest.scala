@@ -7,9 +7,6 @@ import mesosphere.marathon.api.v2.json.AppUpdate
 import mesosphere.marathon.integration.facades.ITEnrichedTask
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.state.PathId._
-import mesosphere.marathon.state.UnreachableStrategy
-
-import scala.concurrent.duration._
 
 @IntegrationTest
 class TaskUnreachableIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonMesosClusterTest {
@@ -48,7 +45,7 @@ class TaskUnreachableIntegrationTest extends AkkaIntegrationFunTest with Embedde
 
   test("A task unreachable update will trigger a replacement task", Unstable) {
     Given("a new app with proper timeouts")
-    val strategy = UnreachableStrategy(10.seconds, 5.minutes)
+    val strategy = Option(raml.UnreachableStrategy(10, 300))
     val app = appProxy(testBasePath / "app", "v1", instances = 1).copy(unreachableStrategy = strategy)
     waitForDeployment(marathon.createAppV2(app))
     val task = waitForTasks(app.id.toPath, 1).head
@@ -65,7 +62,7 @@ class TaskUnreachableIntegrationTest extends AkkaIntegrationFunTest with Embedde
     And("a replacement task is started on a different slave")
     mesosCluster.agents(1).start() // Start an alternative slave
     waitForEventWith("status_update_event", _.info("taskStatus") == "TASK_RUNNING")
-    val tasks = marathon.tasks(app.id).value
+    val tasks = marathon.tasks(app.id.toPath).value
     tasks should have size 2
     tasks.groupBy(_.state).keySet should be(Set("TASK_RUNNING", "TASK_UNREACHABLE"))
     val replacement = tasks.find(_.state == "TASK_RUNNING").get
@@ -80,8 +77,8 @@ class TaskUnreachableIntegrationTest extends AkkaIntegrationFunTest with Embedde
     waitForEventMatching("Replacement task is killed") { matchEvent("TASK_KILLED", replacement) }
 
     And("there is only one running task left")
-    marathon.tasks(app.id).value should have size 1
-    marathon.tasks(app.id).value.head.state should be("TASK_RUNNING")
+    marathon.tasks(app.id.toPath).value should have size 1
+    marathon.tasks(app.id.toPath).value.head.state should be("TASK_RUNNING")
   }
 
   // regression test for https://github.com/mesosphere/marathon/issues/4059
