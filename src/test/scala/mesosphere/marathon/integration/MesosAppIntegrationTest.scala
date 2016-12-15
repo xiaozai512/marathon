@@ -1,7 +1,7 @@
 package mesosphere.marathon
 package integration
 
-import mesosphere.{ AkkaIntegrationFunTest, EnvironmentFunTest, Unstable }
+import mesosphere.{ AkkaIntegrationFunTest, EnvironmentFunTest, SerialIntegrationTag }
 import mesosphere.marathon.core.health.{ MesosHttpHealthCheck, PortReference }
 import mesosphere.marathon.core.pod.{ HostNetwork, HostVolume, MesosContainer, PodDefinition }
 import mesosphere.marathon.integration.facades.MarathonFacade._
@@ -341,7 +341,7 @@ class MesosAppIntegrationTest
     marathon.pod(pod.id).code should be (404)
   }
 
-  test("delete pod instances", Unstable) {
+  test("delete pod instances", SerialIntegrationTag) {
     Given("a new pod with 2 instances")
     val pod = simplePod(testBasePath / "simplepod").copy(
       instances = 3
