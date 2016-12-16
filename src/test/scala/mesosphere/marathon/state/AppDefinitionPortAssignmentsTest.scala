@@ -60,7 +60,7 @@ class AppDefinitionPortAssignmentsTest extends FunSuiteLike with GivenWhenThen w
       PortAssignment(
         portName = Some("http"),
         effectiveIpAddress = None,
-        effectivePort = 80,
+        effectivePort = PortAssignment.NoPort,
         hostPort = None,
         containerPort = Some(80))
     ))

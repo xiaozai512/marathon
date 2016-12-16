@@ -29,7 +29,7 @@ class TaskBuilderTest extends MarathonSpec with Matchers {
 
   val labels = Map("foo" -> "bar", "test" -> "test")
   val runSpecId = PathId("/test")
-  val expectedLabels = labels.toMesosLabels
+  val expectedLabels = labels
 
   test("BuildIfMatches") {
     val offer = MarathonTestHelper.makeBasicOffer(cpus = 1.0, mem = 128.0, disk = 2000.0, beginPort = 31000, endPort = 32000).build
@@ -252,7 +252,7 @@ class TaskBuilderTest extends MarathonSpec with Matchers {
 
         ),
         executor = "//cmd",
-        networks = Seq(BridgeNetwork()),
+        networks = Seq(ContainerNetwork("whatever")),
         container = Some(Docker(
           portMappings = Seq(
             PortMapping(
@@ -684,7 +684,9 @@ class TaskBuilderTest extends MarathonSpec with Matchers {
     taskInfo.getContainer.getMesos.getImage.getAppc.hasId should be (true)
     taskInfo.getContainer.getMesos.getImage.getAppc.getId should be ("sha512-aHashValue")
     taskInfo.getContainer.getMesos.getImage.getAppc.hasLabels should be (true)
-    taskInfo.getContainer.getMesos.getImage.getAppc.getLabels should be (expectedLabels)
+    taskInfo.getContainer.getMesos.getImage.getAppc.getLabels should be (
+      (expectedLabels + ("MESOS_TASK_ID" -> taskInfo.getTaskId.getValue)).toMesosLabels
+    )
   }
 
   test("BuildIfMatchesWithLabels") {
@@ -708,7 +710,7 @@ class TaskBuilderTest extends MarathonSpec with Matchers {
     assertTaskInfo(taskInfo, networkInfo.hostPorts, offer)
 
     assert(taskInfo.hasLabels)
-    assert(taskInfo.getLabels == expectedLabels)
+    assert(taskInfo.getLabels == expectedLabels.toMesosLabels)
   }
 
   test("BuildIfMatchesWithArgs") {

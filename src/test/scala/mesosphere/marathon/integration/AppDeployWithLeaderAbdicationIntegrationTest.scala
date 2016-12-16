@@ -8,6 +8,7 @@ import mesosphere.AkkaIntegrationFunTest
 import mesosphere.marathon.integration.facades.MarathonFacade
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.raml.{ AppHealthCheck, AppUpdate, PortDefinition }
+import mesosphere.marathon.state.PathId
 import org.apache.commons.io.FileUtils
 import org.slf4j.LoggerFactory
 
@@ -43,7 +44,7 @@ class AppDeployWithLeaderAbdicationIntegrationTest extends AkkaIntegrationFunTes
     val plan = "phase(block1)"
     marathon.updateApp(appId, AppUpdate(
       cmd = Some(s"""$serviceMockScript '$plan'"""),
-      portDefinitions = Some(Seq(PortDefinition(0, name = Some("http")))),
+      portDefinitions = Some(Seq(PortDefinition(name = Some("http")))),
       healthChecks = Some(Seq(ramlHealthCheck)),
       upgradeStrategy = Some(raml.UpgradeStrategy(minimumHealthCapacity = 1.0, maximumOverCapacity = 1.0))))
 

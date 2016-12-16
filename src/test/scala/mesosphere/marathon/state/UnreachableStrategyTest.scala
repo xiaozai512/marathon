@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 
 class UnreachableStrategyTest extends UnitTest with ResultMatchers {
 
-  def validate = UnreachableStrategy.validStrategy
+  def validate = UnreachableStrategy.unreachableStrategyValidator
 
   "UnreachableStrategy.unreachableStrategyValidator" should {
     "validate default strategy" in {

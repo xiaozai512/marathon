@@ -177,7 +177,13 @@ class TaskBuilder(
 
       // Fill in container details if necessary
       runSpec.container.foreach { c =>
-        val containerWithPortMappings = c.copyWith(portMappings = boundPortMappings)
+        val containerWithPortMappings = c.copyWith(portMappings = boundPortMappings) match {
+          case d: Container.Docker => d.copy(parameters = d.parameters :+
+            state.Parameter("label", s"MESOS_TASK_ID=${taskId.mesosTaskId.getValue}")
+          )
+          case a: Container.MesosAppC => a.copy(labels = a.labels + ("MESOS_TASK_ID" -> taskId.mesosTaskId.getValue))
+          case c => c
+        }
         builder.mergeFrom(ContainerSerializer.toMesos(runSpec.networks, containerWithPortMappings))
       }
 

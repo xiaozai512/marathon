@@ -100,6 +100,10 @@ case class AppDefinition(
     "portDefinitions and container.portMappings are not allowed at the same time"
   )
 
+  require(
+    !(networks.hasBridgeNetworking && container.fold(false)(c => c.portMappings.exists(_.hostPort.isEmpty))),
+    "bridge networking requires that every host-port in a port-mapping is non-empty (but may be zero)")
+
   val portNumbers: Seq[Int] = portDefinitions.map(_.port)
 
   val isResident: Boolean = residency.isDefined
@@ -622,7 +626,7 @@ object AppDefinition extends GeneralPurposeCombinators {
   private def validBasicAppDefinition(enabledFeatures: Set[String]) = validator[AppDefinition] { appDef =>
     appDef.upgradeStrategy is valid
     appDef.container.each is valid(Container.validContainer(appDef.networks, enabledFeatures))
-    appDef.storeUrls is every(urlCanBeResolvedValidator)
+    appDef.storeUrls is every(urlIsValid)
     appDef.portDefinitions is PortDefinitions.portDefinitionsValidator
     appDef.executor should matchRegexFully("^(//cmd)|(/?[^/]+(/[^/]+)*)|$")
     appDef must containsCmdArgsOrContainer

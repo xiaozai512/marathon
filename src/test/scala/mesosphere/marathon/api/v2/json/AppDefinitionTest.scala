@@ -166,20 +166,18 @@ class AppDefinitionTest extends MarathonSpec with Matchers {
       "hostPort is required for BRIDGE mode."
     )
 
-    app = correct.copy(
-      networks = Seq(BridgeNetwork()),
-      container = Some(Docker(
-        image = "mesosphere/marathon",
-        portMappings = Seq(
-          PortMapping(8080, None, 0, "tcp", Some("foo"))
-        )
-      )),
-      portDefinitions = Nil)
-    shouldViolate(
-      app,
-      "/container/portMappings(0)",
-      "hostPort is required for BRIDGE mode."
-    )
+    val caught = intercept[IllegalArgumentException] {
+      correct.copy(
+        networks = Seq(BridgeNetwork()),
+        container = Some(Docker(
+          image = "mesosphere/marathon",
+          portMappings = Seq(
+            PortMapping(8080, None, 0, "tcp", Some("foo"))
+          )
+        )),
+        portDefinitions = Nil)
+    }
+    caught.getMessage should include("bridge networking requires that every host-port in a port-mapping is non-empty (but may be zero)")
 
     app = correct.copy(
       networks = Seq(ContainerNetwork("whatever")),

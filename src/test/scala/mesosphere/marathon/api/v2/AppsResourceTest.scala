@@ -21,7 +21,7 @@ import mesosphere.marathon.storage.repository.{ AppRepository, GroupRepository, 
 import mesosphere.marathon.test.{ GroupCreation, MarathonActorSupport, MarathonSpec, Mockito }
 import mesosphere.marathon.upgrade.DeploymentPlan
 import org.scalatest.{ GivenWhenThen, Matchers }
-import play.api.libs.json.{ JsDefined, JsNumber, JsObject, JsResultException, JsString, Json }
+import play.api.libs.json.{ JsDefined, JsNumber, JsObject, JsString, Json }
 
 import scala.collection.immutable
 import scala.collection.immutable.Seq

@@ -143,7 +143,7 @@ class AppUpdateTest extends MarathonSpec with Matchers {
         "foo" -> "bar",
         "baz" -> "buzz"
       )))),
-      unreachableStrategy = Some(UnreachableStrategy(998.seconds, 999.seconds))
+      unreachableStrategy = Some(raml.UnreachableStrategy(998, 999))
     )
     JsonTestHelper.assertSerializationRoundtripWorks(update1)
   }

@@ -26,7 +26,8 @@ case class NetworkInfo(
 
   // TODO(cleanup): this should be a val, but we currently don't have the app when updating a task with a TaskStatus
   def portAssignments(app: AppDefinition): Seq[PortAssignment] =
-    computePortAssignments(app, hostPorts, effectiveIpAddress)
+    computePortAssignments(app, hostPorts, effectiveIpAddress,
+      app.networks.hasContainerNetworking && ipAddresses.exists(ip => ip.hasIpAddress && ip.getIpAddress.nonEmpty))
 
   /**
     * Update the network info with the given mesos TaskStatus. This will eventually update ipAddresses and the
@@ -50,6 +51,13 @@ case class NetworkInfo(
       this
     }
   }
+
+  def copyWith(
+    runSpec: RunSpec,
+    hostName: String,
+    hostPorts: Seq[Int] = hostPorts,
+    ipAddresses: Seq[mesos.Protos.NetworkInfo.IPAddress] = ipAddresses
+  ): NetworkInfo = NetworkInfo(runSpec, hostName, hostPorts, ipAddresses)
 }
 
 object NetworkInfo {
@@ -72,14 +80,19 @@ object NetworkInfo {
     hostPorts: Seq[Int],
     ipAddresses: Seq[mesos.Protos.NetworkInfo.IPAddress]): NetworkInfo = {
 
-    val hasConfiguredIpAddress: Boolean = runSpec.networks.hasNonHostNetworking
+    val hasConfiguredIpAddress: Boolean = runSpec.networks.hasContainerNetworking
 
-    val effectiveIpAddress = if (hasConfiguredIpAddress) {
-      pickFirstIpAddressFrom(ipAddresses)
-    } else {
-      // TODO(PODS) extract ip address from launched task
-      Some(hostName)
-    }
+    val effectiveIpAddress =
+      if (hasConfiguredIpAddress) {
+        if (ipAddresses.exists(ip => ip.hasIpAddress && ip.getIpAddress.nonEmpty)) {
+          pickFirstIpAddressFrom(ipAddresses)
+        } else {
+          None
+        }
+      } else {
+        // TODO(PODS) extract ip address from launched task
+        Some(hostName)
+      }
 
     new NetworkInfo(hasConfiguredIpAddress, hostPorts, effectiveIpAddress, ipAddresses)
   }
@@ -95,7 +108,8 @@ object NetworkInfo {
   private[state] def computePortAssignments(
     app: AppDefinition,
     hostPorts: Seq[Int],
-    effectiveIpAddress: Option[String]): Seq[PortAssignment] = {
+    effectiveIpAddress: Option[String],
+    hasAssignedIpAddress: Boolean): Seq[PortAssignment] = {
 
     def fromPortMappings(container: Container): Seq[PortAssignment] = {
       import Container.PortMapping
@@ -108,7 +122,7 @@ object NetworkInfo {
               portName = portName,
               effectiveIpAddress = effectiveIpAddress,
               // very strange that an IP was not allocated for non-host networking, but make the best of it...
-              effectivePort = effectiveIpAddress.fold(hostPort)(_ => containerPort),
+              effectivePort = effectiveIpAddress.fold(PortAssignment.NoPort)(_ => if (hasAssignedIpAddress) containerPort else hostPort),
               hostPort = Option(hostPort),
               containerPort = Option(containerPort)
             )
@@ -117,9 +131,11 @@ object NetworkInfo {
             // no port was requested on the agent
             val assignment = PortAssignment(
               portName = mapping.name,
-              effectiveIpAddress = effectiveIpAddress,
-              // just pick containerPort; we don't have an agent port to fall back on if there's no effective IP
-              effectivePort = mapping.containerPort,
+              // if there's no assigned IP and we have no host port, then this container isn't reachable
+              effectiveIpAddress = if (hasAssignedIpAddress) effectiveIpAddress else None,
+              // just pick containerPort; we don't have an agent port to fall back on regardless,
+              // of effectiveIp or hasAssignedIpAddress
+              effectivePort = if (hasAssignedIpAddress) mapping.containerPort else PortAssignment.NoPort,
               hostPort = None,
               containerPort = Some(mapping.containerPort)
             )
