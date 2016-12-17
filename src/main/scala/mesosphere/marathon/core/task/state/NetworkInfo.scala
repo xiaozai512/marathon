@@ -40,11 +40,12 @@ case class NetworkInfo(
     val newIpAddresses = resolveIpAddresses(mesosStatus)
 
     if (ipAddresses != newIpAddresses) {
-      val newEffectiveIpAddress = if (hasConfiguredIpAddress) {
-        pickFirstIpAddressFrom(newIpAddresses)
-      } else {
-        effectiveIpAddress
-      }
+      val newEffectiveIpAddress =
+        if (hasConfiguredIpAddress) {
+          pickFirstIpAddressFrom(newIpAddresses)
+        } else {
+          effectiveIpAddress
+        }
       copy(ipAddresses = newIpAddresses, effectiveIpAddress = newEffectiveIpAddress)
     } else {
       // nothing has changed
@@ -71,7 +72,7 @@ object NetworkInfo {
     * and we currently expect that there is at most one IP address assigned.
     */
   private[state] def pickFirstIpAddressFrom(ipAddresses: Seq[mesos.Protos.NetworkInfo.IPAddress]): Option[String] = {
-    ipAddresses.headOption.map(_.getIpAddress)
+    ipAddresses.find(_.hasIpAddress).map(_.getIpAddress)
   }
 
   def apply(
@@ -84,11 +85,7 @@ object NetworkInfo {
 
     val effectiveIpAddress =
       if (hasConfiguredIpAddress) {
-        if (ipAddresses.exists(ip => ip.hasIpAddress && ip.getIpAddress.nonEmpty)) {
-          pickFirstIpAddressFrom(ipAddresses)
-        } else {
-          None
-        }
+        pickFirstIpAddressFrom(ipAddresses)
       } else {
         // TODO(PODS) extract ip address from launched task
         Some(hostName)
